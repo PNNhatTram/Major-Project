@@ -36,6 +36,9 @@ def extractPermission(Manifestfile):
         # List permission
         permissions = []
         permission_prefix = "android.permission."
+        # List intent
+        intents = []
+        intent_prefix = "android.intent."
         for line in Manifestfile:
             if permission_prefix in line:
                 start_id = line.find(permission_prefix) + \
@@ -44,10 +47,18 @@ def extractPermission(Manifestfile):
                 permission = line[start_id:end_id].strip()
                 if permission and permission not in permissions:
                     permissions.append(permission)
+            if intent_prefix in line:
+                start_id = line.find(intent_prefix)
+                end_id = line.find('"', start_id)
+                intent = line[start_id:end_id].strip()
+                if intent and intent not in intents:
+                    intents.append(intent)
         # Write list
         with open('result.txt', 'w', encoding='utf-8') as wf:
             permissions_str = ", ".join(permissions)
-            wf.write(f"permission = [{permissions_str}]")
+            wf.write(f"permissions = [{permissions_str}]\n")
+            intents_str = ", ".join(intents)
+            wf.write(f"intents = [{intents_str}]")
         print("The results have been saved to the file result.txt")
     except Exception as e:
         print(f"Error: {e}")
