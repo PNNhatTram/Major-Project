@@ -3,6 +3,8 @@ import subprocess
 from androguard.misc import AnalyzeAPK
 import numpy as np
 from PIL import Image
+import igraph as ig
+import pandas as pd
 
 """ Find and process APK files with Apktool """
 
@@ -17,11 +19,9 @@ def handleAPK(APKfile, apktool_path):
         manifest_path = os.path.join(decompile_folder, "AndroidManifest.xml")
         if os.path.exists(manifest_path):
             with open(manifest_path, "r", encoding="utf-8") as manifest_file:
-                extractPermission(manifest_file)
+                tableBased(manifest_file)
         else:
             print(f"AndroidManifest.xml not found in {decompile_folder}")
-        output_image_path = "output_image.png"
-        imageBased(APKfile, output_image_path)
     except subprocess.CalledProcessError as e:
         print(f"Error decompile APK {APKfile}: {e}")
     except Exception as e:
@@ -31,7 +31,7 @@ def handleAPK(APKfile, apktool_path):
 """ Extract Permission """
 
 
-def extractPermission(Manifestfile):
+def tableBased(Manifestfile):
     try:
         # List permission
         permissions = []
@@ -64,13 +64,21 @@ def extractPermission(Manifestfile):
         print(f"Error: {e}")
 
 
+""" Analyze dex file """
+
+
+def analyzeDex(APKfile):
+    a, d, dx = AnalyzeAPK(APKfile)
+    return a, d, dx
+
+
 """ Image-based processing """
 
 
 def imageBased(APKfile, output_image_path, image_size=(256, 256)):
     try:
         # Analysic APKfile & take bytecode
-        a, d, dx = AnalyzeAPK(APKfile)
+        a, d, dx = analyzeDex(APKfile)
         bytecode = bytearray()
         for dex in d:
             bytecode.extend(a.get_dex())
@@ -90,9 +98,49 @@ def imageBased(APKfile, output_image_path, image_size=(256, 256)):
         image_data = bytecode_array.reshape(image_size)
         image = Image.fromarray(image_data, mode='L')  # Grayscale image
         image.save(output_image_path, 'PNG')
-        print(f"Image was saved at : {output_image_path}")
+        print(f"Image have been saved to the file {output_image_path}")
     except Exception as e:
         print(f"Error in imageBased: {e}")
+
+
+""" Graph-based processing """
+
+
+def graphBased(APKfile):
+    a, d, dx = analyzeDex(APKfile)
+
+    # Create graph
+    graph = ig.Graph(directed=True)
+    methods = dx.get_methods()
+    method_names = [m.get_method().full_name for m in methods]
+    graph.add_vertices(method_names)
+
+    edges = []
+    for method in methods:
+        caller = method.get_method().full_name
+        xrefs = method.get_xref_to()
+        for xref_class, xref_method, _ in xrefs:
+            callee = xref_method.full_name
+            if callee in method_names:
+                edges.append((caller, callee))
+    graph.add_edges(edges)
+
+    # Xuất ra file GML
+    graph.write_gml("apk_graph.gml")
+    print("Graph have been exported to the file apk_graph.gml")
+
+    # Đọc lại file GML và phân tích
+    g = ig.Graph.Read_GML("apk_graph.gml")
+    nodes = g.vs["name"]
+    edges = [(g.vs[edge.source]["name"], g.vs[edge.target]["name"])
+             for edge in g.es]
+
+    print("Danh sách các node:")
+    print(nodes)
+    print("Danh sách các cạnh:")
+    print(edges)
+    print(f"Số lượng node: {g.vcount()}")
+    print(f"Số lượng cạnh: {g.ecount()}")
 
 
 def main():
@@ -113,7 +161,13 @@ def main():
     while not os.path.exists(file_path):
         print(f"File not found at: {file_path}")
         file_path = input("Please enter the correct path: ").strip()
+    # Use APK for table-based
     handleAPK(file_path, apktool_path)
+    # Image-based
+    output_image_path = "output_image.png"
+    imageBased(file_path, output_image_path)
+    # Graph-based
+    graphBased(file_path)
 
 
 def check_java():
