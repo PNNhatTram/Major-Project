@@ -8,10 +8,12 @@ import igraph as ig
 
 all_permissions = set()
 all_intents = set()
+all_apis = set()
 apk_results = []
 
 os.makedirs("images", exist_ok=True)
 os.makedirs("graphs", exist_ok=True)
+
 
 def extract_permissions_intents(manifest_lines):
     permissions = set()
@@ -28,6 +30,19 @@ def extract_permissions_intents(manifest_lines):
             if start != -1 and end != -1:
                 intents.add(line[start:end])
     return permissions, intents
+
+
+def extract_api_calls(dx):
+    api_calls = set()
+    for method in dx.get_methods():
+        for _, call_method, _ in method.get_xref_to():
+            if call_method:
+                class_name = call_method.class_name
+                if class_name.startswith("Landroid/") or class_name.startswith("Ljava/"):
+                    api = f"{class_name}->{call_method.name}"
+                    api_calls.add(api)
+    return api_calls
+
 
 def get_image_size(apk_path, image_size=(256, 256)):
     try:
@@ -54,6 +69,7 @@ def get_image_size(apk_path, image_size=(256, 256)):
         print(f"[Image] Error: {e}")
         return 0
 
+
 def get_graph_stats(apk_path):
     try:
         a, d, dx = AnalyzeAPK(apk_path)
@@ -79,6 +95,7 @@ def get_graph_stats(apk_path):
         print(f"[Graph] Error: {e}")
         return 0, 0
 
+
 def process_apk(apk_path, apktool_path):
     print(f"\n🔍 Processing {apk_path}")
     decompiled_dir = apk_path.rsplit(".apk", 1)[0]
@@ -96,6 +113,10 @@ def process_apk(apk_path, apktool_path):
             all_permissions.update(permissions)
             all_intents.update(intents)
 
+        a, d, dx = AnalyzeAPK(apk_path)
+        api_calls = extract_api_calls(dx)
+        all_apis.update(api_calls)
+
         image_size = get_image_size(apk_path)
         graph_nodes, graph_edges = get_graph_stats(apk_path)
 
@@ -103,6 +124,7 @@ def process_apk(apk_path, apktool_path):
             "apk": os.path.basename(apk_path),
             "permissions": permissions,
             "intents": intents,
+            "apis": api_calls,
             "image_size": image_size,
             "graph_nodes": graph_nodes,
             "graph_edges": graph_edges
@@ -111,24 +133,26 @@ def process_apk(apk_path, apktool_path):
     except subprocess.CalledProcessError as e:
         print(f"❌ Error decompiling {apk_path}: {e}")
 
+
 def export_to_csv(output_path="result.csv"):
     print("\n📤 Exporting to CSV...")
 
-    all_columns = sorted(list(all_permissions) + list(all_intents))
+    all_columns = sorted(list(all_permissions) + list(all_intents) + list(all_apis))
     rows = []
 
     for entry in apk_results:
         row = {"apk": entry["apk"]}
         for col in all_columns:
-            row[col] = 1 if col in entry["permissions"] or col in entry["intents"] else 0
-        row["image_size"] = entry["image_size"]
-        row["graph_nodes"] = entry["graph_nodes"]
-        row["graph_edges"] = entry["graph_edges"]
+            row[col] = 1 if col in entry["permissions"] or col in entry["intents"] or col in entry["apis"] else 0
+        # row["image_size"] = entry["image_size"]
+        # row["graph_nodes"] = entry["graph_nodes"]
+        # row["graph_edges"] = entry["graph_edges"]
         rows.append(row)
 
     df = pd.DataFrame(rows)
     df.to_csv(output_path, index=False, encoding='utf-8')
     print(f"✅ CSV saved to {output_path}")
+
 
 def main():
     apktool_path = input("📍 Path to apktool (default: apktool): ").strip()
@@ -150,6 +174,7 @@ def main():
         process_apk(full_path, apktool_path)
 
     export_to_csv()
+
 
 if __name__ == "__main__":
     main()
