@@ -8,8 +8,26 @@ from PIL import Image
 
 # === Cấu hình ===
 OUTPUT_DIR = "images_rgb"
-IMAGE_WIDTH = 256
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+def get_image_width(file_size: int) -> int:
+    if file_size < 10_000:
+        return 32
+    elif file_size < 30_000:
+        return 64
+    elif file_size < 60_000:
+        return 128
+    elif file_size < 100_000:
+        return 256
+    elif file_size < 200_000:
+        return 384
+    elif file_size < 500_000:
+        return 512
+    elif file_size < 1_000_000:
+        return 768
+    else:
+        return 1024
 
 
 def calculate_entropy(data: bytes) -> int:
@@ -19,14 +37,17 @@ def calculate_entropy(data: bytes) -> int:
     probs = counts / len(data)
     probs = probs[probs > 0]
     entropy = -np.sum(probs * np.log2(probs))
-    return int((entropy / 8.0) * 255)
+    non_linear_entropy = (entropy ** 2) % 8
+    return int(non_linear_entropy * (255 / 8))
 
 
-def generate_rgb_image_from_dex(dex_bytes: bytes, image_width=IMAGE_WIDTH) -> Image.Image:
+def generate_rgb_image_from_dex(dex_bytes: bytes) -> Image.Image:
     def read_u4(bts, off):
         return int.from_bytes(bts[off:off+4], 'little')
 
     total_size = len(dex_bytes)
+
+    image_width = get_image_width(len(dex_bytes))
 
     # 1) Xử lý header (first 0x70 bytes)
     sections = []
