@@ -1,6 +1,7 @@
-# Hướng dẫn Thiết lập Dự án Flask API và PostgreSQL
+# Hướng dẫn Thiết lập Dự án Flask API và PostgreSQL 
 
 Tài liệu này cung cấp hướng dẫn chi tiết về cách thiết lập cơ sở dữ liệu PostgreSQL, cấu hình proxy, tạo khóa SSL/TLS và JWT Secret Key cho dự án.
+Clone source code ứng dụng Android và API backend ở nhánh Viramind
 
 ---
 
@@ -83,7 +84,6 @@ Khi chạy Flask server trên máy host và cần kết nối từ một Android
 ---
 
 ## 4. Tạo Khóa JWT (JSON Web Token)
-
 Để bảo mật các API endpoints bằng JWT, cần một khóa bí mật (secret key) mạnh. Dưới đây là cách tạo một khóa ngẫu nhiên bằng Python:
 
 ```python
@@ -102,12 +102,23 @@ print("Your JWT Secret Key (Hex):", jwt_secret_key_hex)
 jwt_secret_key_base64 = base64.urlsafe_b64encode(secure_random_bytes).decode('utf-8').rstrip('=')
 print("Your JWT Secret Key (Base64):", jwt_secret_key_base64)
 ```
-
 **Cách sử dụng:**
 Chọn một trong hai định dạng (Hex hoặc Base64) và lưu khóa này vào biến môi trường (environment variable) trong file `.env` của dự án, ví dụ:
-
 ```
 JWT_SECRET_KEY=your_generated_base64_or_hex_key_here
 ```
-
 Sau đó, tải nó vào ứng dụng Flask của mình bằng `dotenv`.
+## 5. Cài đặt Dependencies
+Để chạy dự án này, cần cài đặt các thư viện Python cần thiết.
+1. **Tạo môi trường ảo (Khuyến nghị):**
+ ```bash
+    python3 -m venv .venv
+ ```
+2. **Kích hoạt môi trường ảo (Trên Kali Linux):**
+```
+source .venv/bin/activate
+```
+3. **Sau đó, để cài đặt tất cả các thư viện từ file requirements.txt:**
+```
+pip install -r requirements.txt
+```
