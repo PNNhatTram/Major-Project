@@ -52,7 +52,7 @@ Khi chạy Flask server trên máy host và cần kết nối từ một Android
     Nếu muốn xóa thiết lập proxy này, sử dụng lệnh:
 
     ```bash
-    netsh interface portproxy delete v4tov4 listenport=5000 listenaddress=0.0.0.0
+    netsh interface portproxy delete v4tov4 listenport=5000 listenaddress=*
     ```
 
 ---
